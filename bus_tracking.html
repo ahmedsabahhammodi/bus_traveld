@@ -475,12 +475,18 @@
                     .eq('driver_id', driverId)
                     .maybeSingle();
 
-                if (data && data.lat && data.lng) {
+                if (data && data.lat && data.lng && (data.status === 'on_the_way' || data.status === 'arrived')) {
                     updateUI(data);
                     map.setView([data.lat, data.lng], 16);
+                } else {
+                    // السائق لم يبدأ الرحلة بعد
+                    document.getElementById('tripStatusMessage').textContent = '⚪ السائق غير متصل حالياً (في انتظار بدء الرحلة)';
+                    document.getElementById('topStatusText').textContent = 'في الانتظار';
+                    document.getElementById('topStatusPill').className = 'status-pill offline';
                 }
             } catch (e) {
                 console.warn('Initial location fetch error:', e.message);
+                document.getElementById('tripStatusMessage').textContent = '⚪ السائق غير متصل حالياً';
             }
         }
 
@@ -514,8 +520,10 @@
             realtimeChannel.subscribe((status) => {
                 console.log('Realtime tracking status:', status);
                 if (status === 'SUBSCRIBED') {
-                    document.getElementById('topStatusText').textContent = 'متصل بالبث 🟢';
-                    document.getElementById('topStatusPill').className = 'status-pill online';
+                    if (!currentBusLocation) {
+                        document.getElementById('topStatusText').textContent = 'في الانتظار';
+                        document.getElementById('topStatusPill').className = 'status-pill offline';
+                    }
                 }
             });
         }
@@ -538,6 +546,12 @@
                     }
                     const { data } = await query;
                     drivers = data || [];
+                }
+
+                if (drivers.length === 0) {
+                    document.getElementById('tripStatusMessage').textContent = 'لا توجد حافلات مسجلة حالياً في هذه المدرسة';
+                    document.getElementById('topStatusText').textContent = 'غير متوفر';
+                    return;
                 }
 
                 const select = document.getElementById('driverSelect');
@@ -565,6 +579,7 @@
                 }
             } catch (e) {
                 console.warn('Load drivers list error:', e);
+                document.getElementById('tripStatusMessage').textContent = 'تعذر تحميل قائمة الباصات';
             }
         }
 
@@ -602,4 +617,16 @@
         // بدء التشغيل
         window.addEventListener('DOMContentLoaded', () => {
             initMap();
-            if (window.supabase && typeof window.supab
+            if (window.supabase && typeof window.supabase.createClient === 'function') {
+                sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            }
+
+            if (currentDriverId) {
+                startTracking(currentDriverId);
+            } else {
+                loadDriverDropdown();
+            }
+        });
+    </script>
+</body>
+</html>
