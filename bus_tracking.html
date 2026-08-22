@@ -474,8 +474,10 @@
             realtimeChannel = sbClient.channel(`bus-tracking-${driverId}`);
             
             // 1. الاستماع للبث اللحظي السريع عبر الذاكرة
-            realtimeChannel.on('broadcast', { event: 'location_update' }, ({ payload }) => {
-                updateUI(payload);
+            realtimeChannel.on('broadcast', { event: 'location_update' }, (msg) => {
+                console.log('⚡ Received Live GPS Tick:', msg);
+                const payload = (msg && msg.payload) ? msg.payload : msg;
+                if (payload) updateUI(payload);
             });
 
             // 2. الاستماع لتحديثات قاعدة البيانات
