@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>تتبع باص التلميذ المباشر - بوابة ولي الأمر</title>
-    <!-- FontAwesome & Google Fonts CDN -->
+    <!-- Favicon & CDN Fonts -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚌</text></svg>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap">
     
@@ -413,16 +413,17 @@
             }
         }
 
+        const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
         async function fetchDriverProfile(driverId) {
             try {
-                // محاولة القراءة من السيرفر المحلي أو سوبابيز
                 let driver = null;
-                try {
-                    const res = await fetch(`/api/bus/drivers/${driverId}`);
-                    if (res.ok) {
-                        driver = await res.json();
-                    }
-                } catch(e){}
+                if (isLocalServer) {
+                    try {
+                        const res = await fetch(`/api/bus/drivers/${driverId}`);
+                        if (res.ok) driver = await res.json();
+                    } catch(e){}
+                }
 
                 if (!driver && sbClient) {
                     const { data } = await sbClient.from('bus_drivers').select().eq('id', driverId).maybeSingle();
@@ -500,12 +501,12 @@
         async function loadDriverDropdown() {
             try {
                 let drivers = [];
-                try {
-                    const res = await fetch('/api/bus/drivers');
-                    if (res.ok) {
-                        drivers = await res.json();
-                    }
-                } catch(e){}
+                if (isLocalServer) {
+                    try {
+                        const res = await fetch('/api/bus/drivers');
+                        if (res.ok) drivers = await res.json();
+                    } catch(e){}
+                }
 
                 if (drivers.length === 0 && sbClient) {
                     const { data } = await sbClient.from('bus_drivers').select();
