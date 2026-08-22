@@ -336,9 +336,10 @@
         let currentDriverId = null;
         let currentBusLocation = null;
 
-        // قراءة المعرف من الرابط
+        // قراءة المعرف وكود المدرسة من الرابط
         const urlParams = new URLSearchParams(window.location.search);
         currentDriverId = urlParams.get('driver_id') || urlParams.get('driverId');
+        const currentSchoolCode = urlParams.get('school_code') || urlParams.get('school') || localStorage.getItem('school_code') || 'SCH-D2A5A037';
 
         function initMap() {
             // المركز الافتراضي (بغداد)
@@ -519,7 +520,7 @@
             });
         }
 
-        // جلب قائمة السائقين لاختيار أحدهم إذا لم يتم تمرير ID في الرابط
+        // جلب قائمة سائقي المدرسة الحالية فقط
         async function loadDriverDropdown() {
             try {
                 let drivers = [];
@@ -531,7 +532,11 @@
                 }
 
                 if (drivers.length === 0 && sbClient) {
-                    const { data } = await sbClient.from('bus_drivers').select();
+                    let query = sbClient.from('bus_drivers').select().eq('is_active', true);
+                    if (currentSchoolCode) {
+                        query = query.eq('school_code', currentSchoolCode);
+                    }
+                    const { data } = await query;
                     drivers = data || [];
                 }
 
@@ -597,16 +602,4 @@
         // بدء التشغيل
         window.addEventListener('DOMContentLoaded', () => {
             initMap();
-            if (window.supabase && typeof window.supabase.createClient === 'function') {
-                sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            }
-
-            if (currentDriverId) {
-                startTracking(currentDriverId);
-            } else {
-                loadDriverDropdown();
-            }
-        });
-    </script>
-</body>
-</html>
+            if (window.supabase && typeof window.supab
