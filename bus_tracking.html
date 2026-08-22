@@ -103,12 +103,19 @@
 
         .floating-controls {
             position: absolute;
-            bottom: 240px;
-            left: 14px;
+            bottom: 290px;
+            left: 16px;
             z-index: 1000;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
+        }
+
+        @media (max-width: 600px) {
+            .floating-controls {
+                bottom: 310px;
+                left: 14px;
+            }
         }
 
         .control-btn {
@@ -724,7 +731,7 @@
         });
 
         window.addEventListener('DOMContentLoaded', () => {
-            initMap();
+            initMap(); 
             if (window.supabase && typeof window.supabase.createClient === 'function') {
                 sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             }
