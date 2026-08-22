@@ -594,19 +594,25 @@
         // بث لحظي عبر WebSocket Broadcast
         function sendLocationTick(lat, lng, heading, speed, status, statusMessage) {
             if (!realtimeChannel) return;
-            realtimeChannel.sendBroadcastMessage({
-                event: 'location_update',
-                payload: {
-                    driver_id: currentDriver.id,
-                    lat: lat,
-                    lng: lng,
-                    heading: heading,
-                    speed: speed,
-                    status: status,
-                    status_message: statusMessage,
-                    timestamp: new Date().toISOString()
-                }
-            });
+            const data = {
+                driver_id: currentDriver.id,
+                lat: lat,
+                lng: lng,
+                heading: heading,
+                speed: speed,
+                status: status,
+                status_message: statusMessage,
+                timestamp: new Date().toISOString()
+            };
+            try {
+                realtimeChannel.send({
+                    type: 'broadcast',
+                    event: 'location_update',
+                    payload: data
+                });
+            } catch(e) {
+                console.warn('Broadcast send error:', e);
+            }
         }
 
         // تحديث جدول bus_live_locations عبر UPSERT
