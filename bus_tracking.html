@@ -369,8 +369,13 @@
             <i class="fas fa-satellite-dish"></i>
             <span>المتابعة المباشرة لمسار الحافلة</span>
         </div>
-        <div class="status-pill offline" id="topStatusPill">
-            <span id="topStatusText">في الانتظار</span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <button type="button" onclick="promptSchoolCodeDialog()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #94a3b8; padding: 4px 8px; border-radius: 6px; font-size: 11px; cursor: pointer;" title="تغيير رمز المؤسسة">
+                <i class="fas fa-key"></i>
+            </button>
+            <div class="status-pill offline" id="topStatusPill">
+                <span id="topStatusText">في الانتظار</span>
+            </div>
         </div>
     </header>
 
@@ -650,6 +655,43 @@
             });
         }
 
+        function promptSchoolCodeDialog() {
+            const backdrop = document.getElementById('sweetDialogBackdrop');
+            const icon = document.getElementById('sweetDialogIcon');
+            const titleEl = document.getElementById('sweetDialogTitle');
+            const msgEl = document.getElementById('sweetDialogMessage');
+            const inputWrap = document.getElementById('dialogInputContainer');
+            const input = document.getElementById('dialogSchoolInput');
+            const btn = document.getElementById('sweetDialogBtn');
+
+            titleEl.textContent = 'رمز المؤسسة مطلوب';
+            msgEl.textContent = 'يرجى إدخال رمز المؤسسة للاطلاع على مسار الحافلة:';
+            inputWrap.style.display = 'block';
+            input.value = '';
+            btn.textContent = 'دخول ومتابعة';
+
+            icon.className = 'sweet-dialog-icon info';
+            icon.innerHTML = '<i class="fas fa-key"></i>';
+
+            backdrop.classList.add('active');
+            setTimeout(() => input.focus(), 150);
+
+            btn.onclick = () => {
+                const val = input.value.trim();
+                if (!val) {
+                    input.focus();
+                    return;
+                }
+                currentSchoolCode = val;
+                localStorage.setItem('transport_school_code', val);
+                backdrop.classList.remove('active');
+                inputWrap.style.display = 'none';
+                btn.textContent = 'موافق';
+                btn.onclick = () => backdrop.classList.remove('active');
+                loadDriverDropdown();
+            };
+        }
+
         async function loadDriverDropdown() {
             try {
                 let drivers = [];
@@ -661,17 +703,25 @@
                 }
 
                 if (drivers.length === 0 && sbClient) {
-                    let query = sbClient.from('bus_drivers').select().eq('is_active', true);
-                    if (currentSchoolCode) {
-                        query = query.eq('school_code', currentSchoolCode);
+                    if (!currentSchoolCode) {
+                        promptSchoolCodeDialog();
+                        return;
                     }
-                    const { data } = await query;
+
+                    const { data, error } = await sbClient
+                        .from('bus_drivers')
+                        .select()
+                        .eq('is_active', true)
+                        .eq('school_code', currentSchoolCode.trim());
+
+                    if (error) throw error;
                     drivers = data || [];
                 }
 
                 if (drivers.length === 0) {
-                    document.getElementById('tripStatusMessage').textContent = 'لا توجد حافلات مسجلة حالياً';
+                    document.getElementById('tripStatusMessage').textContent = 'لا توجد حافلات مسجلة لهذا الرمز';
                     document.getElementById('topStatusText').textContent = 'غير متوفر';
+                    document.getElementById('driverSelectContainer').style.display = 'none';
                     return;
                 }
 
@@ -731,7 +781,7 @@
         });
 
         window.addEventListener('DOMContentLoaded', () => {
-            initMap(); 
+            initMap();
             if (window.supabase && typeof window.supabase.createClient === 'function') {
                 sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             }
