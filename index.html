@@ -215,5 +215,13 @@
         <p>تطوير وتشغيل <strong>اتقان للحلول البرمجية</strong> &copy; 2026</p>
     </footer>
 
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const schoolCode = urlParams.get('school_code') || urlParams.get('school');
+        if (schoolCode) {
+            const trackingLink = document.querySelector('.card.tracking');
+            if (trackingLink) trackingLink.href = `bus_tracking.html?school=${encodeURIComponent(schoolCode)}`;
+        }
+    </script>
 </body>
 </html>
