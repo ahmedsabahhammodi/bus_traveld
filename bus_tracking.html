@@ -3,30 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <!-- Favicon & CDN Fonts -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚌</text></svg>">
+    <title>المتابعة المباشرة لمسار الحافلة</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap">
-    
-    <!-- Leaflet CSS & JS for Interactive Map (100% Free OpenStreetMap) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-    <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
     <style>
         :root {
+            --bg-base: #0f172a;
+            --bg-surface: #1e293b;
+            --bg-card: rgba(30, 41, 59, 0.95);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
             --primary: #2563eb;
             --primary-dark: #1d4ed8;
             --success: #10b981;
             --warning: #f59e0b;
             --danger: #ef4444;
-            --bg-dark: #0f172a;
-            --card-bg: rgba(255, 255, 255, 0.95);
-            --text-main: #1e293b;
-            --text-muted: #64748b;
-            --shadow: 0 10px 30px rgba(0,0,0,0.15);
+            --border: #334155;
         }
 
         * {
@@ -39,62 +34,66 @@
 
         body {
             background-color: #f1f5f9;
-            color: var(--text-main);
+            color: #0f172a;
             height: 100vh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
 
-        /* Top Header */
         header {
             position: absolute;
-            top: 15px;
-            left: 15px;
-            right: 15px;
+            top: 14px;
+            left: 14px;
+            right: 14px;
             z-index: 1000;
-            background: var(--card-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-radius: 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
             padding: 12px 18px;
-            box-shadow: var(--shadow);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border: 1px solid rgba(255, 255, 255, 0.6);
+            color: var(--text-main);
         }
 
-        .brand {
+        .brand-title {
+            font-size: 15px;
+            font-weight: 800;
             display: flex;
             align-items: center;
             gap: 10px;
-            font-size: 16px;
-            font-weight: 800;
-            color: var(--primary);
+            color: #60a5fa;
         }
 
         .status-pill {
-            padding: 6px 12px;
-            border-radius: 20px;
+            padding: 5px 12px;
+            border-radius: 6px;
             font-size: 12px;
             font-weight: 700;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 6px;
         }
 
-        .status-pill.offline { background: #fee2e2; color: #dc2626; }
-        .status-pill.online { background: #d1fae5; color: #059669; animation: livePulse 1.5s infinite; }
-        .status-pill.arrived { background: #dbeafe; color: #2563eb; }
-
-        @keyframes livePulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
+        .status-pill.offline {
+            background-color: rgba(148, 163, 184, 0.15);
+            color: var(--text-muted);
+            border: 1px solid rgba(148, 163, 184, 0.25);
         }
 
-        /* Map Container */
+        .status-pill.online {
+            background-color: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .status-pill.arrived {
+            background-color: rgba(37, 99, 235, 0.15);
+            color: #60a5fa;
+            border: 1px solid rgba(37, 99, 235, 0.3);
+        }
+
         #map {
             flex: 1;
             width: 100%;
@@ -102,230 +101,330 @@
             z-index: 1;
         }
 
-        /* Custom Bus Marker */
-        .bus-marker-container {
-            position: relative;
-            width: 46px;
-            height: 46px;
+        .floating-controls {
+            position: absolute;
+            bottom: 240px;
+            left: 14px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-main);
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #2563eb;
-            color: #fff;
-            border-radius: 50%;
-            border: 3px solid #fff;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.5);
-            transition: transform 0.4s ease-out;
-        }
-
-        .bus-marker-icon {
-            font-size: 22px;
-        }
-
-        .bus-marker-pulse {
-            position: absolute;
-            top: -6px; left: -6px; right: -6px; bottom: -6px;
-            border-radius: 50%;
-            border: 2px solid #2563eb;
-            animation: ripple 2s infinite;
-            pointer-events: none;
-        }
-
-        @keyframes ripple {
-            0% { transform: scale(0.9); opacity: 1; }
-            100% { transform: scale(1.6); opacity: 0; }
-        }
-
-        /* Bottom Floating Card */
-        .bottom-card {
-            position: absolute;
-            bottom: 20px;
-            left: 15px;
-            right: 15px;
-            z-index: 1000;
-            background: var(--card-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-radius: 20px;
-            padding: 18px 20px;
-            box-shadow: var(--shadow);
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        @keyframes slideUp {
-            from { transform: translateY(30px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        .status-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 12px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        .status-title {
             font-size: 16px;
-            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: background-color 0.2s;
+        }
+
+        .control-btn:hover {
+            background: #334155;
+        }
+
+        .bottom-sheet {
+            position: absolute;
+            bottom: 14px;
+            left: 14px;
+            right: 14px;
+            z-index: 1000;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 18px 20px;
             color: var(--text-main);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .selector-row {
+            margin-bottom: 14px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .select-input {
+            width: 100%;
+            background-color: #0f172a;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .status-text {
+            font-size: 15px;
+            font-weight: 700;
             display: flex;
             align-items: center;
             gap: 8px;
         }
 
-        .driver-details {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+        .telemetry-meta {
+            font-size: 12px;
+            color: var(--text-muted);
         }
 
-        .driver-info h4 {
-            font-size: 16px;
+        .driver-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 14px;
+        }
+
+        .driver-title {
+            font-size: 14px;
             font-weight: 700;
-            color: var(--text-main);
             margin-bottom: 2px;
         }
 
-        .driver-info p {
-            font-size: 13px;
+        .driver-subtitle {
+            font-size: 12px;
             color: var(--text-muted);
+            margin-bottom: 6px;
         }
 
         .telemetry-badges {
             display: flex;
             gap: 8px;
-            margin-top: 8px;
         }
 
-        .tele-badge {
-            background: #f1f5f9;
-            padding: 4px 10px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 600;
-            color: #475569;
+        .badge-item {
+            background-color: #1e293b;
+            border: 1px solid var(--border);
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            color: var(--text-muted);
             display: inline-flex;
             align-items: center;
             gap: 4px;
         }
 
-        .call-driver-btn {
-            background: #10b981;
+        .badge-item strong {
+            color: var(--text-main);
+        }
+
+        .call-btn {
+            padding: 8px 14px;
+            border-radius: 8px;
+            background-color: var(--primary);
             color: #fff;
-            padding: 12px 18px;
-            border-radius: 12px;
-            font-weight: 700;
-            font-size: 14px;
             text-decoration: none;
-            display: flex;
+            font-size: 13px;
+            font-weight: 700;
+            display: inline-flex;
             align-items: center;
-            gap: 8px;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-            transition: transform 0.1s ease;
+            gap: 6px;
         }
 
-        .call-driver-btn:active {
-            transform: scale(0.96);
-        }
-
-        /* Recenter Map Button */
-        .recenter-btn {
-            position: absolute;
-            bottom: 170px;
-            left: 20px;
-            z-index: 1000;
-            width: 45px;
-            height: 45px;
+        .custom-bus-marker {
+            width: 42px;
+            height: 42px;
             border-radius: 50%;
-            background: #fff;
-            border: none;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            background-color: #2563eb;
+            border: 3px solid #ffffff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
             display: flex;
             align-items: center;
             justify-content: center;
+            color: #ffffff;
             font-size: 18px;
-            color: var(--primary);
-            cursor: pointer;
+            transition: transform 0.3s ease;
         }
 
-        /* Driver Picker Select */
-        #driverSelectContainer {
-            margin-bottom: 12px;
+        .sweet-dialog-backdrop {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 20px;
         }
-        #driverSelect {
+
+        .sweet-dialog-backdrop.active {
+            display: flex;
+        }
+
+        .sweet-dialog-panel {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 18px;
             width: 100%;
-            padding: 10px 14px;
-            border-radius: 10px;
-            border: 1px solid #cbd5e1;
-            font-size: 14px;
-            background: #fff;
-            outline: none;
+            max-width: 400px;
+            padding: 30px 24px;
+            text-align: center;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+            animation: dialogPop 0.2s ease-out;
+        }
+
+        @keyframes dialogPop {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .sweet-dialog-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            margin: 0 auto 16px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .sweet-dialog-icon.success {
+            background-color: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .sweet-dialog-icon.error {
+            background-color: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .sweet-dialog-icon.warning {
+            background-color: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .sweet-dialog-icon.info {
+            background-color: rgba(37, 99, 235, 0.15);
+            color: #60a5fa;
+            border: 1px solid rgba(37, 99, 235, 0.3);
+        }
+
+        .sweet-dialog-title {
+            font-size: 17px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            color: var(--text-main);
+        }
+
+        .sweet-dialog-message {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 22px;
+        }
+
+        .sweet-dialog-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-dialog {
+            padding: 10px 22px;
+            border-radius: 8px;
+            background-color: var(--primary);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
         }
     </style>
 </head>
 <body>
 
-    <!-- Header -->
     <header>
-        <div class="brand">
-            <i class="fas fa-bus-alt" style="font-size: 20px;"></i>
-            <span>تتبع حافلة المدرسة</span>
+        <div class="brand-title">
+            <i class="fas fa-satellite-dish"></i>
+            <span>المتابعة المباشرة لمسار الحافلة</span>
         </div>
         <div class="status-pill offline" id="topStatusPill">
-            <i class="fas fa-circle" style="font-size: 8px;"></i>
-            <span id="topStatusText">جاري الاتصال...</span>
+            <span id="topStatusText">في الانتظار</span>
         </div>
     </header>
 
-    <!-- Interactive Map -->
     <div id="map"></div>
 
-    <!-- زر إعادة توجيه الخريطة نحو الباص -->
-    <button class="recenter-btn" id="recenterBtn" title="تمركز الخريطة على الباص">
-        <i class="fas fa-crosshairs"></i>
-    </button>
+    <div class="floating-controls">
+        <button type="button" class="control-btn" id="recenterBtn" title="تمركز الحافلة">
+            <i class="fas fa-crosshairs"></i>
+        </button>
+    </div>
 
-    <!-- Bottom Status Card -->
-    <div class="bottom-card">
-        
-        <div id="driverSelectContainer" style="display: none;">
-            <label style="font-size: 12px; font-weight: bold; color: #64748b; margin-bottom: 4px; display: block;">اختر حافلة السائق:</label>
-            <select id="driverSelect">
-                <option value="">— جاري تحميل السائقين —</option>
+    <div class="bottom-sheet">
+        <div class="selector-row" id="driverSelectContainer" style="display: none;">
+            <select id="driverSelect" class="select-input">
+                <option value="">— جاري تحميل الحافلات المتاحة —</option>
             </select>
         </div>
 
-        <div class="status-header">
-            <div class="status-title" id="statusTitleText">
-                <i class="fas fa-route" style="color: var(--primary);"></i>
-                <span id="tripStatusMessage">جاري جلب إحداثيات الباص...</span>
+        <div class="status-row">
+            <div class="status-text">
+                <i class="fas fa-route" style="color: #60a5fa;"></i>
+                <span id="tripStatusMessage">في انتظار بدء الرحلة من قبل السائق</span>
             </div>
-            <div class="tele-badge" id="lastUpdatedBadge">
-                <i class="far fa-clock"></i> <span id="lastUpdatedTime">—</span>
+            <div class="telemetry-meta">
+                <span id="lastUpdatedTime">—</span>
             </div>
         </div>
 
-        <div class="driver-details">
-            <div class="driver-info">
-                <h4 id="driverName">سائق الباص</h4>
-                <p id="busRouteName">باص 01 • خط السير</p>
+        <div class="driver-card">
+            <div>
+                <div class="driver-title" id="driverName">سائق الحافلة</div>
+                <div class="driver-subtitle" id="busRouteName">بيانات خط السير</div>
                 <div class="telemetry-badges">
-                    <span class="tele-badge"><i class="fas fa-tachometer-alt"></i> <span id="speedDisplay">0</span> كم/س</span>
-                    <span class="tele-badge"><i class="fas fa-satellite"></i> <span id="accuracyDisplay">إشارة GPS حية</span></span>
+                    <span class="badge-item">السرعة: <strong id="speedDisplay">0</strong> كم/س</span>
+                    <span class="badge-item" id="signalBadge">الإشارة: مستقرة</span>
                 </div>
             </div>
-            <a href="tel:" class="call-driver-btn" id="callDriverBtn" style="display: none;">
-                <i class="fas fa-phone-alt"></i>
+            <a href="tel:" class="call-btn" id="callDriverBtn" style="display: none;">
+                <i class="fas fa-phone"></i>
                 <span>اتصال</span>
             </a>
         </div>
     </div>
 
+    <div class="sweet-dialog-backdrop" id="sweetDialogBackdrop">
+        <div class="sweet-dialog-panel">
+            <div class="sweet-dialog-icon info" id="sweetDialogIcon">
+                <i class="fas fa-info"></i>
+            </div>
+            <div class="sweet-dialog-title" id="sweetDialogTitle">تنبيه</div>
+            <div class="sweet-dialog-message" id="sweetDialogMessage">الرسالة</div>
+            <div id="dialogInputContainer" style="display: none; margin-bottom: 18px;">
+                <input type="text" id="dialogSchoolInput" placeholder="أدخل كود المؤسسة..." style="width: 100%; background: #0f172a; border: 1px solid #334155; padding: 10px 14px; border-radius: 8px; color: #fff; text-align: center; font-size: 14px; outline: none;">
+            </div>
+            <div class="sweet-dialog-buttons">
+                <button type="button" class="btn-dialog" id="sweetDialogBtn">موافق</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // إعدادات سحابة Supabase
         const SUPABASE_URL = 'https://oogbfwcbfhacsuxdjcne.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_0Yj2RwNpLbxFDFOS0-baVQ_JAjAaDLm';
 
@@ -335,14 +434,47 @@
         let busMarker = null;
         let currentDriverId = null;
         let currentBusLocation = null;
+        let hasCenteredMap = false;
 
-        // قراءة المعرف وكود المدرسة من الرابط
+        function notify(title, message, type = 'info') {
+            const backdrop = document.getElementById('sweetDialogBackdrop');
+            const icon = document.getElementById('sweetDialogIcon');
+            const titleEl = document.getElementById('sweetDialogTitle');
+            const msgEl = document.getElementById('sweetDialogMessage');
+            const inputContainer = document.getElementById('dialogInputContainer');
+
+            inputContainer.style.display = 'none';
+            titleEl.textContent = title;
+            msgEl.textContent = message;
+
+            icon.className = `sweet-dialog-icon ${type}`;
+            if (type === 'success') {
+                icon.innerHTML = '<i class="fas fa-check"></i>';
+            } else if (type === 'error') {
+                icon.innerHTML = '<i class="fas fa-xmark"></i>';
+            } else if (type === 'warning') {
+                icon.innerHTML = '<i class="fas fa-triangle-exclamation"></i>';
+            } else {
+                icon.innerHTML = '<i class="fas fa-info"></i>';
+            }
+
+            backdrop.classList.add('active');
+        }
+
+        document.getElementById('sweetDialogBtn').addEventListener('click', () => {
+            document.getElementById('sweetDialogBackdrop').classList.remove('active');
+        });
+
         const urlParams = new URLSearchParams(window.location.search);
         currentDriverId = urlParams.get('driver_id') || urlParams.get('driverId');
-        const currentSchoolCode = urlParams.get('school_code') || urlParams.get('school') || localStorage.getItem('school_code') || 'SCH-D2A5A037';
+        let currentSchoolCode = urlParams.get('school_code') || urlParams.get('school') || localStorage.getItem('transport_school_code');
+        const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+        if (urlParams.get('school_code') || urlParams.get('school')) {
+            localStorage.setItem('transport_school_code', currentSchoolCode);
+        }
 
         function initMap() {
-            // المركز الافتراضي (بغداد)
             map = L.map('map', {
                 zoomControl: false,
                 attributionControl: false
@@ -352,29 +484,25 @@
                 maxZoom: 19
             }).addTo(map);
 
-            // إضافة أزرار التحكم بالتكبير أسفل اليمين
             L.control.zoom({ position: 'topright' }).addTo(map);
         }
-
-        let hasCenteredMap = false;
 
         function createBusMarker(lat, lng, heading = 0) {
             const latNum = parseFloat(lat);
             const lngNum = parseFloat(lng);
             if (isNaN(latNum) || isNaN(lngNum) || (latNum === 0 && lngNum === 0)) return;
 
-            const busIconHtml = `
-                <div class="bus-marker-container" style="transform: rotate(${heading}deg);">
-                    <i class="fas fa-bus-alt bus-marker-icon"></i>
-                    <div class="bus-marker-pulse"></div>
+            const iconHtml = `
+                <div class="custom-bus-marker" style="transform: rotate(${heading}deg);">
+                    <i class="fas fa-bus-simple"></i>
                 </div>
             `;
 
             const customIcon = L.divIcon({
-                html: busIconHtml,
-                className: 'custom-bus-div-icon',
-                iconSize: [46, 46],
-                iconAnchor: [23, 23]
+                html: iconHtml,
+                className: 'custom-bus-icon-wrap',
+                iconSize: [42, 42],
+                iconAnchor: [21, 21]
             });
 
             if (busMarker) {
@@ -393,13 +521,12 @@
         }
 
         function updateUI(payload) {
-            console.log('📍 Processing GPS Payload:', payload);
             const lat = parseFloat(payload.lat);
             const lng = parseFloat(payload.lng);
             const heading = parseFloat(payload.heading) || 0;
             const speed = payload.speed !== undefined ? payload.speed : 0;
             const status = payload.status || 'offline';
-            const status_message = payload.status_message;
+            const statusMessage = payload.status_message;
             const timestamp = payload.timestamp;
 
             if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
@@ -407,34 +534,29 @@
                 createBusMarker(lat, lng, heading);
             }
 
-            // تحديث السرعة
             document.getElementById('speedDisplay').textContent = speed || 0;
 
-            // تحديث وقت آخر نبضة
             const timeStr = timestamp ? new Date(timestamp).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'الآن';
             document.getElementById('lastUpdatedTime').textContent = timeStr;
 
-            // تحديث الحالة والبادجات
             const topPill = document.getElementById('topStatusPill');
             const topText = document.getElementById('topStatusText');
             const msgTitle = document.getElementById('tripStatusMessage');
 
             if (status === 'arrived') {
                 topPill.className = 'status-pill arrived';
-                topText.textContent = 'وصل المدرسة 🏫';
-                msgTitle.textContent = status_message || '🟢 وصل الباص إلى المدرسة بحمد الله!';
+                topText.textContent = 'تم الوصول';
+                msgTitle.textContent = statusMessage || 'تم وصول الحافلة إلى الوجهة المحددة';
             } else if (status === 'on_the_way') {
                 topPill.className = 'status-pill online';
-                topText.textContent = 'مباشر 🟢';
-                msgTitle.textContent = status_message || '🟡 الباص في الطريق';
+                topText.textContent = 'مباشر';
+                msgTitle.textContent = statusMessage || 'الحافلة قيد الحركة في خط السير';
             } else {
                 topPill.className = 'status-pill offline';
-                topText.textContent = 'غير متصل ⚪';
-                msgTitle.textContent = 'السائق غير متصل حالياً';
+                topText.textContent = 'في الانتظار';
+                msgTitle.textContent = 'السائق غير متصل حالياً (في انتظار بدء الرحلة)';
             }
         }
-
-        const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
         async function fetchDriverProfile(driverId) {
             try {
@@ -443,7 +565,7 @@
                     try {
                         const res = await fetch(`/api/bus/drivers/${driverId}`);
                         if (res.ok) driver = await res.json();
-                    } catch(e){}
+                    } catch (e) {}
                 }
 
                 if (!driver && sbClient) {
@@ -453,7 +575,7 @@
 
                 if (driver) {
                     document.getElementById('driverName').textContent = driver.full_name;
-                    document.getElementById('busRouteName').textContent = `${driver.bus_number || 'باص المدرسة'} • ${driver.route_name || 'خط السير'}`;
+                    document.getElementById('busRouteName').textContent = `${driver.bus_number || 'حافلة النقل'} • ${driver.route_name || 'خط السير'}`;
                     
                     if (driver.phone) {
                         const callBtn = document.getElementById('callDriverBtn');
@@ -462,7 +584,7 @@
                     }
                 }
             } catch (e) {
-                console.warn('Driver profile fetch:', e.message);
+                console.warn(e);
             }
         }
 
@@ -479,35 +601,29 @@
                     updateUI(data);
                     map.setView([data.lat, data.lng], 16);
                 } else {
-                    // السائق لم يبدأ الرحلة بعد
-                    document.getElementById('tripStatusMessage').textContent = '⚪ السائق غير متصل حالياً (في انتظار بدء الرحلة)';
+                    document.getElementById('tripStatusMessage').textContent = 'السائق غير متصل حالياً (في انتظار بدء الرحلة)';
                     document.getElementById('topStatusText').textContent = 'في الانتظار';
                     document.getElementById('topStatusPill').className = 'status-pill offline';
                 }
             } catch (e) {
-                console.warn('Initial location fetch error:', e.message);
-                document.getElementById('tripStatusMessage').textContent = '⚪ السائق غير متصل حالياً';
+                document.getElementById('tripStatusMessage').textContent = 'السائق غير متصل حالياً';
             }
         }
 
         function subscribeToRealtimeBroadcast(driverId) {
             if (!sbClient) return;
 
-            // إغلاق أي قناة سابقة
             if (realtimeChannel) {
                 sbClient.removeChannel(realtimeChannel);
             }
 
             realtimeChannel = sbClient.channel(`bus-tracking-${driverId}`);
             
-            // 1. الاستماع للبث اللحظي السريع عبر الذاكرة
             realtimeChannel.on('broadcast', { event: 'location_update' }, (msg) => {
-                console.log('⚡ Received Live GPS Tick:', msg);
                 const payload = (msg && msg.payload) ? msg.payload : msg;
                 if (payload) updateUI(payload);
             });
 
-            // 2. الاستماع لتحديثات قاعدة البيانات
             realtimeChannel.on('postgres_changes', {
                 event: '*',
                 schema: 'public',
@@ -518,7 +634,6 @@
             });
 
             realtimeChannel.subscribe((status) => {
-                console.log('Realtime tracking status:', status);
                 if (status === 'SUBSCRIBED') {
                     if (!currentBusLocation) {
                         document.getElementById('topStatusText').textContent = 'في الانتظار';
@@ -528,7 +643,6 @@
             });
         }
 
-        // جلب قائمة سائقي المدرسة الحالية فقط
         async function loadDriverDropdown() {
             try {
                 let drivers = [];
@@ -536,7 +650,7 @@
                     try {
                         const res = await fetch('/api/bus/drivers');
                         if (res.ok) drivers = await res.json();
-                    } catch(e){}
+                    } catch (e) {}
                 }
 
                 if (drivers.length === 0 && sbClient) {
@@ -549,17 +663,17 @@
                 }
 
                 if (drivers.length === 0) {
-                    document.getElementById('tripStatusMessage').textContent = 'لا توجد حافلات مسجلة حالياً في هذه المدرسة';
+                    document.getElementById('tripStatusMessage').textContent = 'لا توجد حافلات مسجلة حالياً';
                     document.getElementById('topStatusText').textContent = 'غير متوفر';
                     return;
                 }
 
                 const select = document.getElementById('driverSelect');
-                select.innerHTML = '<option value="">— اختر باص السائق —</option>';
+                select.innerHTML = '<option value="">— اختر الحافلة —</option>';
                 drivers.forEach(d => {
                     const opt = document.createElement('option');
                     opt.value = d.id;
-                    opt.textContent = `🚌 ${d.full_name} (${d.bus_number || 'باص'}) - ${d.route_name || ''}`;
+                    opt.textContent = `${d.full_name} (${d.bus_number || 'حافلة'}) - ${d.route_name || ''}`;
                     select.appendChild(opt);
                 });
 
@@ -578,8 +692,7 @@
                     startTracking(currentDriverId);
                 }
             } catch (e) {
-                console.warn('Load drivers list error:', e);
-                document.getElementById('tripStatusMessage').textContent = 'تعذر تحميل قائمة الباصات';
+                document.getElementById('tripStatusMessage').textContent = 'تعذر تحميل قائمة الحافلات';
             }
         }
 
@@ -589,32 +702,27 @@
             subscribeToRealtimeBroadcast(driverId);
         }
 
-        // تمركز الخريطة
         document.getElementById('recenterBtn').addEventListener('click', () => {
             if (currentBusLocation) {
                 map.setView(currentBusLocation, 17, { animate: true });
             } else {
-                alert('لم يتم استلام إحداثيات الباص بعد');
+                notify('تنبيه', 'لم يتم استلام إحداثيات الحافلة بعد', 'info');
             }
         });
 
-        // إدارة دورة الحياة (Lifecycle Management) لتوفير اتصالات السحابة
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
-                // إغلاق الاتصال عند إخفاء الصفحة أو نزول المتصفح للخلفية
                 if (realtimeChannel && sbClient) {
                     sbClient.removeChannel(realtimeChannel);
                     realtimeChannel = null;
                 }
             } else {
-                // إعادة الاتصال فور العودة للصفحة
                 if (currentDriverId) {
                     startTracking(currentDriverId);
                 }
             }
         });
 
-        // بدء التشغيل
         window.addEventListener('DOMContentLoaded', () => {
             initMap();
             if (window.supabase && typeof window.supabase.createClient === 'function') {
