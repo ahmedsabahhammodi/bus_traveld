@@ -355,7 +355,13 @@
             L.control.zoom({ position: 'topright' }).addTo(map);
         }
 
+        let hasCenteredMap = false;
+
         function createBusMarker(lat, lng, heading = 0) {
+            const latNum = parseFloat(lat);
+            const lngNum = parseFloat(lng);
+            if (isNaN(latNum) || isNaN(lngNum) || (latNum === 0 && lngNum === 0)) return;
+
             const busIconHtml = `
                 <div class="bus-marker-container" style="transform: rotate(${heading}deg);">
                     <i class="fas fa-bus-alt bus-marker-icon"></i>
@@ -371,19 +377,33 @@
             });
 
             if (busMarker) {
-                busMarker.setLatLng([lat, lng]);
+                busMarker.setLatLng([latNum, lngNum]);
                 busMarker.setIcon(customIcon);
             } else {
-                busMarker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+                busMarker = L.marker([latNum, lngNum], { icon: customIcon }).addTo(map);
+            }
+
+            if (!hasCenteredMap && map) {
+                map.setView([latNum, lngNum], 16);
+                hasCenteredMap = true;
+            } else if (map) {
+                map.panTo([latNum, lngNum], { animate: true, duration: 0.5 });
             }
         }
 
         function updateUI(payload) {
-            const { lat, lng, heading, speed, status, status_message, timestamp } = payload;
+            console.log('📍 Processing GPS Payload:', payload);
+            const lat = parseFloat(payload.lat);
+            const lng = parseFloat(payload.lng);
+            const heading = parseFloat(payload.heading) || 0;
+            const speed = payload.speed !== undefined ? payload.speed : 0;
+            const status = payload.status || 'offline';
+            const status_message = payload.status_message;
+            const timestamp = payload.timestamp;
 
-            if (lat && lng) {
+            if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
                 currentBusLocation = [lat, lng];
-                createBusMarker(lat, lng, heading || 0);
+                createBusMarker(lat, lng, heading);
             }
 
             // تحديث السرعة
@@ -590,4 +610,3 @@
     </script>
 </body>
 </html>
- 
