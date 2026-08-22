@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>تتبع باص التلميذ المباشر - بوابة ولي الأمر</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="stylesheet" href="fontawesome/css/all.min.css">
+    <link rel="stylesheet" href="fonts.css">
+    
+    <!-- Leaflet CSS & JS for Interactive Map (100% Free OpenStreetMap) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-dark: #0f172a;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Tajawal', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: #f1f5f9;
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top Header */
+        header {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            z-index: 1000;
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 16px;
+            padding: 12px 18px;
+            box-shadow: var(--shadow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        .status-pill {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-pill.offline { background: #fee2e2; color: #dc2626; }
+        .status-pill.online { background: #d1fae5; color: #059669; animation: livePulse 1.5s infinite; }
+        .status-pill.arrived { background: #dbeafe; color: #2563eb; }
+
+        @keyframes livePulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* Map Container */
+        #map {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Custom Bus Marker */
+        .bus-marker-container {
+            position: relative;
+            width: 46px;
+            height: 46px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #2563eb;
+            color: #fff;
+            border-radius: 50%;
+            border: 3px solid #fff;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.5);
+            transition: transform 0.4s ease-out;
+        }
+
+        .bus-marker-icon {
+            font-size: 22px;
+        }
+
+        .bus-marker-pulse {
+            position: absolute;
+            top: -6px; left: -6px; right: -6px; bottom: -6px;
+            border-radius: 50%;
+            border: 2px solid #2563eb;
+            animation: ripple 2s infinite;
+            pointer-events: none;
+        }
+
+        @keyframes ripple {
+            0% { transform: scale(0.9); opacity: 1; }
+            100% { transform: scale(1.6); opacity: 0; }
+        }
+
+        /* Bottom Floating Card */
+        .bottom-card {
+            position: absolute;
+            bottom: 20px;
+            left: 15px;
+            right: 15px;
+            z-index: 1000;
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 20px;
+            padding: 18px 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .status-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .status-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .driver-details {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .driver-info h4 {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 2px;
+        }
+
+        .driver-info p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .telemetry-badges {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .tele-badge {
+            background: #f1f5f9;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #475569;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .call-driver-btn {
+            background: #10b981;
+            color: #fff;
+            padding: 12px 18px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 14px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            transition: transform 0.1s ease;
+        }
+
+        .call-driver-btn:active {
+            transform: scale(0.96);
+        }
+
+        /* Recenter Map Button */
+        .recenter-btn {
+            position: absolute;
+            bottom: 170px;
+            left: 20px;
+            z-index: 1000;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: #fff;
+            border: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: var(--primary);
+            cursor: pointer;
+        }
+
+        /* Driver Picker Select */
+        #driverSelectContainer {
+            margin-bottom: 12px;
+        }
+        #driverSelect {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid #cbd5e1;
+            font-size: 14px;
+            background: #fff;
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="brand">
+            <i class="fas fa-bus-alt" style="font-size: 20px;"></i>
+            <span>تتبع حافلة المدرسة</span>
+        </div>
+        <div class="status-pill offline" id="topStatusPill">
+            <i class="fas fa-circle" style="font-size: 8px;"></i>
+            <span id="topStatusText">جاري الاتصال...</span>
+        </div>
+    </header>
+
+    <!-- Interactive Map -->
+    <div id="map"></div>
+
+    <!-- زر إعادة توجيه الخريطة نحو الباص -->
+    <button class="recenter-btn" id="recenterBtn" title="تمركز الخريطة على الباص">
+        <i class="fas fa-crosshairs"></i>
+    </button>
+
+    <!-- Bottom Status Card -->
+    <div class="bottom-card">
+        
+        <div id="driverSelectContainer" style="display: none;">
+            <label style="font-size: 12px; font-weight: bold; color: #64748b; margin-bottom: 4px; display: block;">اختر حافلة السائق:</label>
+            <select id="driverSelect">
+                <option value="">— جاري تحميل السائقين —</option>
+            </select>
+        </div>
+
+        <div class="status-header">
+            <div class="status-title" id="statusTitleText">
+                <i class="fas fa-route" style="color: var(--primary);"></i>
+                <span id="tripStatusMessage">جاري جلب إحداثيات الباص...</span>
+            </div>
+            <div class="tele-badge" id="lastUpdatedBadge">
+                <i class="far fa-clock"></i> <span id="lastUpdatedTime">—</span>
+            </div>
+        </div>
+
+        <div class="driver-details">
+            <div class="driver-info">
+                <h4 id="driverName">سائق الباص</h4>
+                <p id="busRouteName">باص 01 • خط السير</p>
+                <div class="telemetry-badges">
+                    <span class="tele-badge"><i class="fas fa-tachometer-alt"></i> <span id="speedDisplay">0</span> كم/س</span>
+                    <span class="tele-badge"><i class="fas fa-satellite"></i> <span id="accuracyDisplay">إشارة GPS حية</span></span>
+                </div>
+            </div>
+            <a href="tel:" class="call-driver-btn" id="callDriverBtn" style="display: none;">
+                <i class="fas fa-phone-alt"></i>
+                <span>اتصال</span>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // إعدادات سحابة Supabase
+        const SUPABASE_URL = 'https://oogbfwcbfhacsuxdjcne.supabase.co';
+        let SUPABASE_ANON_KEY = localStorage.getItem('supabase_anon_key') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9vZ2Jmd2NiZmhhY3N1eGRqY25lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MzAzOTQsImV4cCI6MjA5NzIwNjM5NH0.placeholder';
+
+        let supabase = null;
+        let realtimeChannel = null;
+        let map = null;
+        let busMarker = null;
+        let currentDriverId = null;
+        let currentBusLocation = null;
+
+        // قراءة المعرف من الرابط
+        const urlParams = new URLSearchParams(window.location.search);
+        currentDriverId = urlParams.get('driver_id') || urlParams.get('driverId');
+
+        function initMap() {
+            // المركز الافتراضي (بغداد)
+            map = L.map('map', {
+                zoomControl: false,
+                attributionControl: false
+            }).setView([33.3152, 44.3661], 14);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19
+            }).addTo(map);
+
+            // إضافة أزرار التحكم بالتكبير أسفل اليمين
+            L.control.zoom({ position: 'topright' }).addTo(map);
+        }
+
+        function createBusMarker(lat, lng, heading = 0) {
+            const busIconHtml = `
+                <div class="bus-marker-container" style="transform: rotate(${heading}deg);">
+                    <i class="fas fa-bus-alt bus-marker-icon"></i>
+                    <div class="bus-marker-pulse"></div>
+                </div>
+            `;
+
+            const customIcon = L.divIcon({
+                html: busIconHtml,
+                className: 'custom-bus-div-icon',
+                iconSize: [46, 46],
+                iconAnchor: [23, 23]
+            });
+
+            if (busMarker) {
+                busMarker.setLatLng([lat, lng]);
+                busMarker.setIcon(customIcon);
+            } else {
+                busMarker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+            }
+        }
+
+        function updateUI(payload) {
+            const { lat, lng, heading, speed, status, status_message, timestamp } = payload;
+
+            if (lat && lng) {
+                currentBusLocation = [lat, lng];
+                createBusMarker(lat, lng, heading || 0);
+            }
+
+            // تحديث السرعة
+            document.getElementById('speedDisplay').textContent = speed || 0;
+
+            // تحديث وقت آخر نبضة
+            const timeStr = timestamp ? new Date(timestamp).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'الآن';
+            document.getElementById('lastUpdatedTime').textContent = timeStr;
+
+            // تحديث الحالة والبادجات
+            const topPill = document.getElementById('topStatusPill');
+            const topText = document.getElementById('topStatusText');
+            const msgTitle = document.getElementById('tripStatusMessage');
+
+            if (status === 'arrived') {
+                topPill.className = 'status-pill arrived';
+                topText.textContent = 'وصل المدرسة 🏫';
+                msgTitle.textContent = status_message || '🟢 وصل الباص إلى المدرسة بحمد الله!';
+            } else if (status === 'on_the_way') {
+                topPill.className = 'status-pill online';
+                topText.textContent = 'مباشر 🟢';
+                msgTitle.textContent = status_message || '🟡 الباص في الطريق';
+            } else {
+                topPill.className = 'status-pill offline';
+                topText.textContent = 'غير متصل ⚪';
+                msgTitle.textContent = 'السائق غير متصل حالياً';
+            }
+        }
+
+        async function fetchDriverProfile(driverId) {
+            try {
+                // محاولة القراءة من السيرفر المحلي أو سوبابيز
+                let driver = null;
+                const res = await fetch(`/api/bus/drivers/${driverId}`);
+                if (res.ok) {
+                    driver = await res.json();
+                } else if (supabase) {
+                    const { data } = await supabase.from('bus_drivers').select().eq('id', driverId).maybeSingle();
+                    driver = data;
+                }
+
+                if (driver) {
+                    document.getElementById('driverName').textContent = driver.full_name;
+                    document.getElementById('busRouteName').textContent = `${driver.bus_number || 'باص المدرسة'} • ${driver.route_name || 'خط السير'}`;
+                    
+                    if (driver.phone) {
+                        const callBtn = document.getElementById('callDriverBtn');
+                        callBtn.href = `tel:${driver.phone}`;
+                        callBtn.style.display = 'inline-flex';
+                    }
+                }
+            } catch (e) {
+                console.warn('Driver profile fetch:', e.message);
+            }
+        }
+
+        async function fetchInitialLocation(driverId) {
+            if (!supabase) return;
+            try {
+                const { data } = await supabase
+                    .from('bus_live_locations')
+                    .select()
+                    .eq('driver_id', driverId)
+                    .maybeSingle();
+
+                if (data && data.lat && data.lng) {
+                    updateUI(data);
+                    map.setView([data.lat, data.lng], 16);
+                }
+            } catch (e) {
+                console.warn('Initial location fetch error:', e.message);
+            }
+        }
+
+        function subscribeToRealtimeBroadcast(driverId) {
+            if (!supabase) return;
+
+            // إغلاق أي قناة سابقة
+            if (realtimeChannel) {
+                supabase.removeChannel(realtimeChannel);
+            }
+
+            realtimeChannel = supabase.channel(`bus-tracking-${driverId}`);
+            
+            // 1. الاستماع للبث اللحظي السريع عبر الذاكرة
+            realtimeChannel.on('broadcast', { event: 'location_update' }, ({ payload }) => {
+                updateUI(payload);
+            });
+
+            // 2. الاستماع لتحديثات قاعدة البيانات
+            realtimeChannel.on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'bus_live_locations',
+                filter: `driver_id=eq.${driverId}`
+            }, (payload) => {
+                if (payload.new) updateUI(payload.new);
+            });
+
+            realtimeChannel.subscribe((status) => {
+                console.log('Realtime tracking status:', status);
+                if (status === 'SUBSCRIBED') {
+                    document.getElementById('topStatusText').textContent = 'متصل بالبث 🟢';
+                    document.getElementById('topStatusPill').className = 'status-pill online';
+                }
+            });
+        }
+
+        // جلب قائمة السائقين لاختيار أحدهم إذا لم يتم تمرير ID في الرابط
+        async function loadDriverDropdown() {
+            try {
+                const res = await fetch('/api/bus/drivers');
+                let drivers = [];
+                if (res.ok) {
+                    drivers = await res.json();
+                } else if (supabase) {
+                    const { data } = await supabase.from('bus_drivers').select();
+                    drivers = data || [];
+                }
+
+                const select = document.getElementById('driverSelect');
+                select.innerHTML = '<option value="">— اختر باص السائق —</option>';
+                drivers.forEach(d => {
+                    const opt = document.createElement('option');
+                    opt.value = d.id;
+                    opt.textContent = `🚌 ${d.full_name} (${d.bus_number || 'باص'}) - ${d.route_name || ''}`;
+                    select.appendChild(opt);
+                });
+
+                document.getElementById('driverSelectContainer').style.display = 'block';
+
+                select.addEventListener('change', (e) => {
+                    if (e.target.value) {
+                        currentDriverId = e.target.value;
+                        startTracking(currentDriverId);
+                    }
+                });
+
+                if (drivers.length > 0 && !currentDriverId) {
+                    select.value = drivers[0].id;
+                    currentDriverId = drivers[0].id;
+                    startTracking(currentDriverId);
+                }
+            } catch (e) {
+                console.warn('Load drivers list error:', e);
+            }
+        }
+
+        function startTracking(driverId) {
+            fetchDriverProfile(driverId);
+            fetchInitialLocation(driverId);
+            subscribeToRealtimeBroadcast(driverId);
+        }
+
+        // تمركز الخريطة
+        document.getElementById('recenterBtn').addEventListener('click', () => {
+            if (currentBusLocation) {
+                map.setView(currentBusLocation, 17, { animate: true });
+            } else {
+                alert('لم يتم استلام إحداثيات الباص بعد');
+            }
+        });
+
+        // إدارة دورة الحياة (Lifecycle Management) لتوفير اتصالات السحابة
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                // إغلاق الاتصال عند إخفاء الصفحة أو نزول المتصفح للخلفية
+                if (realtimeChannel && supabase) {
+                    supabase.removeChannel(realtimeChannel);
+                    realtimeChannel = null;
+                }
+            } else {
+                // إعادة الاتصال فور العودة للصفحة
+                if (currentDriverId) {
+                    startTracking(currentDriverId);
+                }
+            }
+        });
+
+        // بدء التشغيل
+        window.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            if (window.supabase) {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            }
+
+            if (currentDriverId) {
+                startTracking(currentDriverId);
+            } else {
+                loadDriverDropdown();
+            }
+        });
+    </script>
+</body>
+</html>
