@@ -415,6 +415,8 @@
             }
         }
 
+        const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
         // تسجيل الدخول
         document.getElementById('loginForm').addEventListener('submit', async () => {
             const phone = document.getElementById('driverPhone').value.trim();
@@ -425,15 +427,16 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التحقق...';
 
             try {
-                // البحث في الداتابيز المحلية أو سوبابيز
                 let driver = null;
-                try {
-                    const res = await fetch(`/api/bus/drivers`);
-                    if (res.ok) {
-                        const drivers = await res.json();
-                        driver = drivers.find(d => d.phone === phone);
-                    }
-                } catch(e){}
+                if (isLocalServer) {
+                    try {
+                        const res = await fetch(`/api/bus/drivers`);
+                        if (res.ok) {
+                            const drivers = await res.json();
+                            driver = drivers.find(d => d.phone === phone);
+                        }
+                    } catch(e){}
+                }
 
                 if (!driver && sbClient) {
                     const { data } = await sbClient.from('bus_drivers').select().eq('phone', phone).maybeSingle();
@@ -441,7 +444,7 @@
                 }
 
                 if (!driver) {
-                    throw new Error('رقم الهاتف غير مسجل لسائق أو تعذر الاتصال');
+                    throw new Error('رقم الهاتف غير مسجل لسائق');
                 }
 
                 currentDriver = driver;
@@ -471,9 +474,19 @@
         async function loadAssignedStudents() {
             const container = document.getElementById('studentsListContainer');
             try {
-                const res = await fetch(`/api/bus/drivers/${currentDriver.id}/students`);
-                if (!res.ok) throw new Error('فشل التحميل');
-                const students = await res.json();
+                let students = [];
+                if (isLocalServer) {
+                    try {
+                        const res = await fetch(`/api/bus/drivers/${currentDriver.id}/students`);
+                        if (res.ok) students = await res.json();
+                    } catch(e){}
+                }
+
+                if (students.length === 0 && sbClient) {
+                    const { data } = await sbClient.from('students_registry').select().eq('bus_driver_id', currentDriver.id);
+                    students = data || [];
+                }
+
                 document.getElementById('studentsCountTxt').textContent = students.length;
 
                 if (students.length === 0) {
