@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>منصة حافلات النقل المدرسي - نظام المدرسة الذكية</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="stylesheet" href="fontawesome/css/all.min.css">
+    <link rel="stylesheet" href="fonts.css">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --primary-light: rgba(37, 99, 235, 0.1);
+            --secondary: #10b981;
+            --secondary-dark: #059669;
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --card-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Tajawal', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Ambient Glow Elements */
+        .ambient-glow {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(120px);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .glow-1 {
+            top: -100px;
+            right: -100px;
+            width: 400px;
+            height: 400px;
+            background: rgba(37, 99, 235, 0.25);
+        }
+
+        .glow-2 {
+            bottom: -100px;
+            left: -100px;
+            width: 450px;
+            height: 450px;
+            background: rgba(16, 185, 129, 0.2);
+        }
+
+        /* Header */
+        header {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            padding: 40px 20px 20px 20px;
+        }
+
+        .logo-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--card-border);
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #60a5fa;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        header h1 {
+            font-size: 32px;
+            font-weight: 900;
+            line-height: 1.3;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        header p {
+            font-size: 16px;
+            color: var(--text-muted);
+            max-width: 550px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* Main Portals Grid */
+        .container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+                gap: 18px;
+            }
+            header h1 {
+                font-size: 26px;
+            }
+        }
+
+        /* Cards */
+        .portal-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 32px 26px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            text-decoration: none;
+            color: inherit;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .portal-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            transition: height 0.3s ease;
+        }
+
+        .portal-card.driver::before {
+            background: linear-gradient(90deg, #3b82f6, #60a5fa);
+        }
+
+        .portal-card.parent::before {
+            background: linear-gradient(90deg, #10b981, #34d399);
+        }
+
+        .portal-card:hover {
+            transform: translateY(-6px);
+            border-color: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .portal-card:active {
+            transform: scale(0.98);
+        }
+
+        .icon-circle {
+            width: 70px;
+            height: 70px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin-bottom: 22px;
+            transition: transform 0.3s ease;
+        }
+
+        .portal-card:hover .icon-circle {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .driver .icon-circle {
+            background: rgba(37, 99, 235, 0.15);
+            color: #60a5fa;
+            border: 1px solid rgba(37, 99, 235, 0.3);
+        }
+
+        .parent .icon-circle {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .card-body h2 {
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-body p {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .card-features {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        .feat-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: #cbd5e1;
+        }
+
+        .feat-item i {
+            font-size: 14px;
+        }
+
+        .driver .feat-item i { color: #60a5fa; }
+        .parent .feat-item i { color: #34d399; }
+
+        .btn-action {
+            width: 100%;
+            padding: 14px 20px;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .driver .btn-action {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.35);
+        }
+
+        .parent .btn-action {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);
+        }
+
+        /* Footer */
+        footer {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            padding: 30px 20px;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        footer a {
+            color: #60a5fa;
+            text-decoration: none;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ambient-glow glow-1"></div>
+    <div class="ambient-glow glow-2"></div>
+
+    <header>
+        <div class="logo-badge">
+            <i class="fas fa-bus"></i>
+            <span>منصة النقل المدرسي الذكي</span>
+        </div>
+        <h1>مرحباً بك في نظام تتبع الحافلات</h1>
+        <p>يرجى اختيار البوابة المخصصة للمتابعة اللحظية لرحلات المدرسة</p>
+    </header>
+
+    <main class="container">
+        
+        <!-- بطاقة السائق -->
+        <a href="driver_portal.html" class="portal-card driver">
+            <div>
+                <div class="icon-circle">
+                    <i class="fas fa-id-badge"></i>
+                </div>
+                <div class="card-body">
+                    <h2>بوابة السائق <i class="fas fa-arrow-left" style="font-size: 16px; margin-right: auto; opacity: 0.7;"></i></h2>
+                    <p>مخصصة لسائقي باصات المدرسة لبدء الرحلات الصباحية والمسائية ومشاركة الموقع المباشر.</p>
+                    <div class="card-features">
+                        <div class="feat-item"><i class="fas fa-satellite"></i> بث مباشر للإحداثيات أثناء القيادة</div>
+                        <div class="feat-item"><i class="fas fa-mobile-alt"></i> إبقاء الشاشة مضاءة على حامل الباص</div>
+                        <div class="feat-item"><i class="fas fa-users"></i> كشف بأسماء طلاب الباص مع أرقام الأهالي</div>
+                        <div class="feat-item"><i class="fas fa-bell"></i> زر فوري لإشعار الأهالي بوصول المدرسة</div>
+                    </div>
+                </div>
+            </div>
+            <div class="btn-action">
+                <span>دخول بوابة السائق</span>
+                <i class="fas fa-chevron-left"></i>
+            </div>
+        </a>
+
+        <!-- بطاقة ولي الأمر -->
+        <a href="bus_tracking.html" class="portal-card parent">
+            <div>
+                <div class="icon-circle">
+                    <i class="fas fa-map-marked-alt"></i>
+                </div>
+                <div class="card-body">
+                    <h2>بوابة ولي الأمر <i class="fas fa-arrow-left" style="font-size: 16px; margin-right: auto; opacity: 0.7;"></i></h2>
+                    <p>مخصصة لأولياء الأمور لتتبع موقع حافلة الطالب لحظة بلحظة ومعرفة أوقات الوصول والسرعة.</p>
+                    <div class="card-features">
+                        <div class="feat-item"><i class="fas fa-map"></i> خريطة تفاعلية حية بدون أي اشتراكات</div>
+                        <div class="feat-item"><i class="fas fa-tachometer-alt"></i> مراقبة سرعة الحافلة وخط سيرها</div>
+                        <div class="feat-item"><i class="fas fa-check-circle"></i> تنبيه فوري فور وصول الباص للمدرسة</div>
+                        <div class="feat-item"><i class="fas fa-phone-alt"></i> زر اتصال مباشر بسائق الحافلة</div>
+                    </div>
+                </div>
+            </div>
+            <div class="btn-action">
+                <span>تتبع باص الطالب الآن</span>
+                <i class="fas fa-chevron-left"></i>
+            </div>
+        </a>
+
+    </main>
+
+    <footer>
+        <p>نظام إدارة المدارس الذكية © 2026 — تم تصميمه لتوفير أعلى درجات الأمان والراحة لأبنائنا الطلبة</p>
+    </footer>
+
+</body>
+</html>
