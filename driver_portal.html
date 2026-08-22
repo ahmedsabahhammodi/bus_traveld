@@ -529,6 +529,13 @@
             document.getElementById('liveBadge').className = 'status-badge live';
             document.getElementById('liveBadgeText').textContent = 'بث مباشر 🟢';
 
+            // جلب الموقع فوراً بدون تأخير
+            navigator.geolocation.getCurrentPosition(
+                handlePositionUpdate,
+                handlePositionError,
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+
             watchPositionId = navigator.geolocation.watchPosition(
                 handlePositionUpdate,
                 handlePositionError,
